@@ -99,45 +99,23 @@ func getRootPaths() []string {
 	}
 }
 
-func getLangName(langID uint16) string {
-	switch langID {
-	case 0x409:
-		return "EN - English"
-	case 0x419:
-		return "RU - Russian"
-	case 0x422:
-		return "UK - Ukrainian"
-	case 0x40C:
-		return "FR - French"
-	case 0x407:
-		return "DE - German"
-	case 0x410:
-		return "IT - Italian"
-	case 0x40A:
-		return "ES - Spanish"
-	case 0x411:
-		return "JA - Japanese"
-	case 0x416:
-		return "PT - Portuguese"
-	case 0x415:
-		return "PL - Polish"
-	case 0x423:
-		return "BE - Belarusian"
-	case 0x804:
-		return "ZH-CH - Chinese"
-	default:
-		return fmt.Sprintf("Unknown (0x%04X)", langID)
-	}
+func getSystemLocale() uint16 {
+	kernel32 := syscall.NewLazyDLL("kernel32.dll")
+	getUserDefaultLCID := kernel32.NewProc("GetUserDefaultLCID")
+
+	lcid, _, _ := getUserDefaultLCID.Call()
+	return uint16(lcid & 0xFFFF)
 }
 
-func getKeyboardLayout() (string, error) {
-	user32 := syscall.NewLazyDLL("user32.dll")
-	getKeyboardLayout := user32.NewProc("GetKeyboardLayout")
+func isRestrictedRegion() bool {
+	locale := getSystemLocale()
 
-	layout, _, _ := getKeyboardLayout.Call(0)
-	langID := uint16(layout & 0xFFF)
+	restrictedLocales := map[uint16]bool{
+		0x419: true,
+		0x423: true,
+	}
 
-	return getLangName(langID), nil
+	return restrictedLocales[locale]
 }
 
 func processFile(path string, results chan<- ScanResult, wg *sync.WaitGroup) {
@@ -377,10 +355,9 @@ func main() {
 		return
 	}
 
-	lang, _ := getKeyboardLayout()
-
-	if lang == "RU" || lang == "BE" || lang == "ZH-CH" {
-		return
+	if isRestrictedRegion() {
+		fmt.Printf("%s Приложение не может быть запущено в ограниченном регионе.\n", MINUS)
+		os.Exit(1)
 	}
 
 	var extensions []string
