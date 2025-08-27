@@ -1,0 +1,10 @@
+{
+  "host": "localhost",
+  "port": 8080,
+  "tls_cert": "server.crt",
+  "tls_key": "server.key",
+  "upload_path": "./uploads",
+  "use_tls": false,
+  "auth_token": "secret_token_123",
+  "max_file_size": 10485760
+}
